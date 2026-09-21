@@ -479,6 +479,8 @@ input,textarea{font-family:inherit;}
 (function(){
   "use strict";
 
+  var AUTO_ADVANCE_DELAY_MS = 4000;
+
   function uid(){
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'id-'+Math.random().toString(36).slice(2)+Date.now().toString(36);
@@ -554,7 +556,8 @@ input,textarea{font-family:inherit;}
     elapsedMs: 0,
     startEpoch: 0,
     lastCurrentCueId: undefined,
-    lastSaveOk: true
+    lastSaveOk: true,
+    autoAdvanceTimer: null
   };
 
   var els = {};
@@ -812,13 +815,48 @@ input,textarea{font-family:inherit;}
     if (idx<0) return;
     var wasSelected = state.selectedId===songId;
     state.songs.splice(idx,1);
-    if (wasSelected) state.selectedId = state.songs.length ? state.songs[Math.min(idx,state.songs.length-1)].id : null;
+    if (wasSelected){
+      clearAutoAdvance();
+      state.running = false;
+      stopTicking();
+      state.elapsedMs = 0;
+      state.selectedId = state.songs.length ? state.songs[Math.min(idx,state.songs.length-1)].id : null;
+    }
     persistAndNotify(function(){ return state.db.doc('songs/'+songId).delete(); });
   }
 
   /* ---------------- transport ---------------- */
+  function clearAutoAdvance(){
+    if (state.autoAdvanceTimer){ clearTimeout(state.autoAdvanceTimer); state.autoAdvanceTimer = null; }
+  }
+
+  function advanceToNextSong(){
+    var ordered = state.songs.slice().sort(function(a,b){ return a.order-b.order; });
+    var idx = ordered.findIndex(function(s){ return s.id===state.selectedId; });
+    state.running = false;
+    stopTicking();
+    if (idx<0 || idx+1>=ordered.length){
+      state.elapsedMs = 0;
+      renderTransport();
+      renderNowNext();
+      showToast('セットリストの最後の曲です');
+      return;
+    }
+    var next = ordered[idx+1];
+    state.elapsedMs = 0;
+    state.selectedId = next.id;
+    state.editingCueId = null;
+    state.editingSongTitle = false;
+    state.editingDuration = false;
+    state.addingCue = false;
+    state.lastCurrentCueId = undefined;
+    renderAll();
+    showToast('次の曲「'+next.title+'」の頭で待機中');
+  }
+
   function play(){
     if (state.running) return;
+    clearAutoAdvance();
     state.startEpoch = performance.now() - state.elapsedMs;
     state.running = true;
     startTicking();
@@ -826,6 +864,7 @@ input,textarea{font-family:inherit;}
   }
   function pause(){
     if (!state.running) return;
+    clearAutoAdvance();
     state.elapsedMs = performance.now() - state.startEpoch;
     state.running = false;
     stopTicking();
@@ -833,6 +872,7 @@ input,textarea{font-family:inherit;}
     renderNowNext();
   }
   function reset(){
+    clearAutoAdvance();
     state.running = false;
     state.elapsedMs = 0;
     stopTicking();
@@ -842,12 +882,14 @@ input,textarea{font-family:inherit;}
     scrollToCurrent();
   }
   function nudge(deltaSec){
+    clearAutoAdvance();
     var ms = deltaSec*1000;
     if (state.running) state.startEpoch -= ms;
     else state.elapsedMs = Math.max(0, state.elapsedMs+ms);
     renderNowNext();
   }
   function jumpTo(sec){
+    clearAutoAdvance();
     state.elapsedMs = Math.max(0, sec*1000);
     if (state.running) state.startEpoch = performance.now() - state.elapsedMs;
     renderNowNext();
@@ -931,12 +973,19 @@ input,textarea{font-family:inherit;}
     els.songrail.querySelectorAll('.chip[data-id]').forEach(function(chip){
       chip.addEventListener('click', function(e){
         if (e.target.dataset.del) return;
+        if (chip.dataset.id !== state.selectedId){
+          clearAutoAdvance();
+          state.running = false;
+          stopTicking();
+          state.elapsedMs = 0;
+        }
         state.selectedId = chip.dataset.id;
         state.editingCueId = null;
         state.editingSongTitle = false;
         state.editingDuration = false;
         state.addingCue = false;
         state.lastCurrentCueId = undefined;
+        renderTransport();
         renderMain();
         renderNowNext();
       });
@@ -1187,6 +1236,14 @@ input,textarea{font-family:inherit;}
       var pct = Math.min(100, Math.max(0, t/song.durationSec*100));
       fill.style.width = pct+'%';
       playhead.style.left = pct+'%';
+    }
+
+    if (state.running && t >= song.durationSec && !state.autoAdvanceTimer){
+      showToast('この曲は終了です。'+Math.round(AUTO_ADVANCE_DELAY_MS/1000)+'秒後に次の曲へ移動します');
+      state.autoAdvanceTimer = setTimeout(function(){
+        state.autoAdvanceTimer = null;
+        advanceToNextSong();
+      }, AUTO_ADVANCE_DELAY_MS);
     }
 
     if (cn.current && cn.current.id !== state.lastCurrentCueId){
