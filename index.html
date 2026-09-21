@@ -253,17 +253,6 @@ input,textarea{font-family:inherit;}
   border:1px solid var(--accent);border-radius:6px;color:var(--text);
   width:64px;text-align:right;padding:3px 6px;outline:none;
 }
-.caveat{
-  font-size:11px;
-  color:var(--text-faint);
-  background:var(--surface-2);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  padding:8px 10px;
-  line-height:1.5;
-}
-.caveat b{color:var(--text-dim);}
-
 /* timeline */
 .timeline-wrap{position:relative;}
 .timeline{
@@ -1043,7 +1032,6 @@ input,textarea{font-family:inherit;}
             titleHtml+
             metaHtml+
           '</div>'+
-          '<div class="caveat"><b>注記：</b>'+(song.analysisNote ? escapeHtml(song.analysisNote) : '秒数はリハ動画をもとにした目安（未解析のテンプレート）です。')+' 本番のテンポで前後するので、再生中に該当キューをタップすると、その場で時刻を合わせ直せます。</div>'+
           '<div class="timeline-wrap">'+
             '<div class="timeline" id="timeline">'+
               '<div class="timeline-fill" id="timelineFill"></div>'+
