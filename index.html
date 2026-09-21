@@ -1,0 +1,1227 @@
+<title>スイッチキュー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@500;600;700&display=swap">
+<style>
+:root{
+  --bg:#12141c;
+  --surface:#1a1d29;
+  --surface-2:#232739;
+  --surface-3:#2c3146;
+  --border:#333853;
+  --text:#eef0f6;
+  --text-dim:#98a0ba;
+  --text-faint:#5c6280;
+  --accent:#ffb04d;
+  --accent-rgb:255,176,77;
+  --live:#ff3b57;
+  --live-rgb:255,59,87;
+  --accent2:#48d7ff;
+  --ok:#3ddc84;
+  --radius:16px;
+  --radius-sm:10px;
+  --font-ui:'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-ui);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+button{font-family:inherit;}
+input,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:8px;}
+
+.app{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  max-width:1240px;
+  margin:0 auto;
+  width:100%;
+}
+
+/* ---------- header ---------- */
+.header{
+  flex:none;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 10px;
+  background:linear-gradient(180deg,var(--surface),rgba(26,29,41,0.0));
+  border-bottom:1px solid var(--border);
+}
+.header-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+}
+@media (max-width:400px){
+  .save-status .label{display:none;}
+}
+.brand{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+}
+.brand-mark{
+  font-weight:900;
+  font-size:17px;
+  letter-spacing:.02em;
+}
+.brand-mark .dot{color:var(--live);}
+.brand-sub{
+  font-size:10.5px;
+  color:var(--text-faint);
+  letter-spacing:.04em;
+}
+.mode-toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:var(--text-dim);
+  cursor:pointer;
+  user-select:none;
+  padding:6px 10px 6px 6px;
+  border-radius:999px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+}
+.switch{
+  width:34px;height:20px;border-radius:999px;background:var(--surface-3);
+  position:relative;flex:none;transition:background .15s ease;
+}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--text-dim);transition:transform .15s ease,background .15s ease;
+}
+.mode-toggle.on .switch{background:rgba(255,176,77,.35);}
+.mode-toggle.on .switch::after{transform:translateX(14px);background:var(--accent);}
+.mode-toggle.on{color:var(--accent);}
+
+.hdr-actions{display:flex;align-items:center;gap:8px;}
+.save-status{
+  font-size:10.5px;color:var(--text-faint);white-space:nowrap;
+  display:flex;align-items:center;gap:4px;
+}
+.save-status .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none;}
+.save-status.bad .dot{background:var(--live);}
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 92px);
+  transform:translateX(-50%) translateY(8px);
+  max-width:calc(100% - 32px);
+  background:var(--surface-3);
+  color:var(--text);
+  padding:9px 16px;
+  border-radius:999px;
+  font-size:12.5px;
+  font-weight:600;
+  border:1px solid var(--border);
+  box-shadow:0 6px 20px rgba(0,0,0,.35);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+  z-index:80;
+  text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.error{border-color:rgba(var(--live-rgb),.6);color:var(--live);}
+
+.songrail{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding-bottom:2px;
+  scrollbar-width:none;
+}
+.songrail::-webkit-scrollbar{display:none;}
+.chip{
+  flex:none;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  color:var(--text-dim);
+  font-size:12.5px;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.chip .num{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  color:var(--text-faint);
+}
+.chip.active{
+  background:rgba(var(--live-rgb),.14);
+  border-color:rgba(var(--live-rgb),.55);
+  color:var(--text);
+}
+.chip.active .num{color:var(--live);}
+.chip .chip-x{
+  color:var(--text-faint);
+  padding-left:2px;
+  font-size:14px;
+  line-height:1;
+}
+.chip.add{
+  color:var(--accent);
+  border-style:dashed;
+  border-color:rgba(var(--accent-rgb),.5);
+}
+
+/* ---------- main ---------- */
+.main{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:16px 16px 12px;
+}
+.main-grid{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.hero-col,.cue-col{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  min-width:0;
+}
+@media (min-width:860px){
+  .main-grid{
+    display:grid;
+    grid-template-columns:minmax(300px,380px) 1fr;
+    gap:28px;
+    align-items:start;
+  }
+  .hero-col{
+    position:sticky;
+    top:0;
+  }
+}
+.song-title-row{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+}
+.song-title{
+  font-size:18px;
+  font-weight:700;
+  cursor:default;
+}
+.song-title.editable{cursor:text;border-bottom:1px dashed var(--text-faint);}
+.song-title-input{
+  font-size:18px;font-weight:700;background:transparent;border:none;border-bottom:1px solid var(--accent);
+  color:var(--text);width:100%;padding:0 0 2px;outline:none;
+}
+.song-meta{
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:var(--text-faint);
+  flex:none;
+}
+.song-meta.editable{cursor:text;border-bottom:1px dashed var(--text-faint);}
+.song-meta-input{
+  font-family:var(--font-mono);font-size:12px;background:var(--surface-2);
+  border:1px solid var(--accent);border-radius:6px;color:var(--text);
+  width:64px;text-align:right;padding:3px 6px;outline:none;
+}
+.caveat{
+  font-size:11px;
+  color:var(--text-faint);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:8px 10px;
+  line-height:1.5;
+}
+.caveat b{color:var(--text-dim);}
+
+/* timeline */
+.timeline-wrap{position:relative;}
+.timeline{
+  position:relative;
+  height:44px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  overflow:hidden;
+}
+.timeline-fill{
+  position:absolute;top:0;bottom:0;left:0;
+  background:linear-gradient(90deg,rgba(var(--live-rgb),.22),rgba(var(--live-rgb),.06));
+}
+.timeline-mark{
+  position:absolute;top:0;bottom:0;width:1px;background:var(--border);
+}
+.timeline-mark.past{background:rgba(var(--live-rgb),.4);}
+.timeline-playhead{
+  position:absolute;top:0;bottom:0;width:2px;background:var(--live);
+  box-shadow:0 0 10px 1px rgba(var(--live-rgb),.8);
+  transition:left .2s linear;
+}
+.timeline-time{
+  display:flex;justify-content:space-between;
+  font-family:var(--font-mono);font-size:10.5px;color:var(--text-faint);margin-top:4px;
+}
+
+/* now card */
+.now-card{
+  border-radius:var(--radius);
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:18px 18px 16px;
+  position:relative;
+  overflow:hidden;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+.now-card.live{
+  border-color:rgba(var(--live-rgb),.6);
+  box-shadow:0 0 0 1px rgba(var(--live-rgb),.15),0 0 26px rgba(var(--live-rgb),.18);
+}
+.now-card.live::before{
+  content:'ON AIR';
+  position:absolute;top:12px;right:14px;
+  font-family:var(--font-mono);
+  font-size:10px;font-weight:700;letter-spacing:.08em;
+  color:var(--live);
+  animation:blink 1.4s ease-in-out infinite;
+}
+@keyframes blink{0%,55%{opacity:1;}60%,100%{opacity:.35;}}
+.now-eyebrow{
+  font-size:11px;color:var(--text-faint);letter-spacing:.06em;margin-bottom:6px;
+}
+.now-label{
+  font-size:26px;font-weight:900;line-height:1.15;margin-bottom:8px;
+  text-wrap:balance;
+}
+.now-performer{
+  display:inline-flex;align-items:center;
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:14px;font-weight:600;
+}
+.now-note{margin-top:10px;font-size:14.5px;color:var(--text);line-height:1.55;}
+.now-empty{color:var(--text-faint);font-size:13px;}
+
+.next-strip{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  font-size:12.5px;
+  color:var(--text-dim);
+}
+.next-strip.soon{
+  border-color:rgba(var(--accent-rgb),.6);
+  background:rgba(var(--accent-rgb),.1);
+  color:var(--accent);
+}
+.next-strip .tag{
+  flex:none;font-size:10px;letter-spacing:.06em;color:var(--text-faint);
+}
+.next-strip.soon .tag{color:var(--accent);}
+.next-strip .body{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.next-strip .eta{
+  flex:none;font-family:var(--font-mono);font-weight:700;
+}
+
+/* cue list */
+.cue-list-head{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:var(--text-faint);
+}
+.cue-list{
+  display:flex;flex-direction:column;gap:6px;
+}
+.cue-row{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:10px 12px;
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:3px solid transparent;
+  cursor:pointer;
+}
+.cue-row.past{opacity:.5;}
+.cue-row.current{
+  border-left-color:var(--live);
+  background:rgba(var(--live-rgb),.08);
+}
+.cue-time{
+  flex:none;
+  font-family:var(--font-mono);
+  font-size:13px;
+  color:var(--text-dim);
+  padding-top:2px;
+  min-width:38px;
+}
+.cue-row.current .cue-time{color:var(--live);font-weight:700;}
+.cue-body{flex:1;min-width:0;}
+.cue-label{font-size:14px;font-weight:700;margin-bottom:3px;}
+.cue-performer{
+  display:inline-block;
+  font-size:11.5px;font-weight:600;
+  padding:2px 8px;border-radius:999px;
+  margin-right:6px;
+}
+.cue-performer.empty{color:var(--text-faint);font-style:italic;font-weight:500;background:transparent;padding-left:0;}
+.cue-note{font-size:13.5px;color:var(--text-dim);margin-top:4px;line-height:1.5;}
+.cue-actions{flex:none;display:flex;gap:4px;}
+.icon-btn{
+  border:none;background:var(--surface-2);color:var(--text-dim);
+  width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;cursor:pointer;
+}
+.icon-btn:active{background:var(--surface-3);}
+.icon-btn.danger{color:var(--live);}
+
+.cue-edit-form{
+  display:flex;flex-direction:column;gap:6px;width:100%;
+}
+.cue-edit-row{display:flex;gap:6px;}
+.cue-edit-row input{
+  background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:7px 8px;font-size:13px;outline:none;
+}
+.cue-edit-row input:focus{border-color:var(--accent);}
+.f-time{width:64px;font-family:var(--font-mono);flex:none;}
+.f-label{flex:1.2;min-width:0;}
+.f-performer{flex:1;min-width:0;}
+.f-note{width:100%;}
+.cue-edit-actions{display:flex;gap:6px;justify-content:flex-end;}
+.btn{
+  border:none;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;
+}
+.btn-save{background:var(--accent);color:#221400;}
+.btn-cancel{background:var(--surface-2);color:var(--text-dim);}
+
+.add-cue-btn,.add-song-inline{
+  border:1px dashed var(--border);
+  background:transparent;
+  color:var(--text-faint);
+  border-radius:var(--radius-sm);
+  padding:10px;
+  font-size:12.5px;
+  cursor:pointer;
+}
+.add-cue-btn:active{background:var(--surface-2);}
+
+.empty-state{
+  text-align:center;color:var(--text-faint);font-size:13px;padding:24px 10px;
+}
+
+/* ---------- transport ---------- */
+.transport{
+  flex:none;
+  padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);
+  background:linear-gradient(0deg,var(--surface),rgba(26,29,41,0));
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+}
+.t-btn{
+  border:none;background:var(--surface-2);color:var(--text-dim);
+  border-radius:999px;
+  font-family:var(--font-mono);font-size:12px;font-weight:700;
+  padding:0 14px;height:40px;
+  cursor:pointer;
+}
+.t-btn:active{background:var(--surface-3);}
+.t-play{
+  width:64px;height:64px;border-radius:50%;
+  background:var(--live);color:#fff;
+  font-size:22px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 6px rgba(var(--live-rgb),.14);
+  border:none;cursor:pointer;flex:none;
+}
+.t-play.playing{background:var(--surface-3);color:var(--live);box-shadow:0 0 0 6px rgba(var(--live-rgb),.08);}
+.t-play:active{transform:scale(.96);}
+.clock{
+  font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums;
+  font-size:12px;color:var(--text-faint);
+  position:absolute;
+  left:50%;transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 74px);
+}
+
+@media (max-width:400px){
+  .now-label{font-size:22px;}
+  .header{padding-left:12px;padding-right:12px;}
+  .main{padding-left:12px;padding-right:12px;}
+}
+</style>
+
+<div class="app" id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  function uid(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'id-'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+  }
+
+  /* Seed data: songs 1-3 are a first-pass read of the rehearsal videos
+     (frame + loudness based, see analysisNote); 4-19 are duration-scaled
+     placeholders awaiting review. */
+  var SEED_FULL = [{"order": 1, "title": "グレンダイザー", "durationSec": 163, "cues": [{"id": "song-01c00", "time": 0, "label": "イントロ", "performer": "全員", "note": "静かに始まる、ホーン隊はまだ吹いていない"}, {"id": "song-01c01", "time": 15, "label": "Aメロ", "performer": "Vo(メイン)", "note": "ボーカルが歌い出す、バンドは控えめ"}, {"id": "song-01c02", "time": 30, "label": "Bメロ", "performer": "Vo(メイン)", "note": "じわじわ音量上昇、波形にわずかな谷あり"}, {"id": "song-01c03", "time": 45, "label": "サビ", "performer": "全員+ホーン", "note": "ホーン隊が加わりフルバンドで一気に盛り上がる"}, {"id": "song-01c04", "time": 63, "label": "2番Aメロ", "performer": "Vo(メイン)", "note": "音量やや落ち着き、ボーカル中心に戻る"}, {"id": "song-01c05", "time": 77, "label": "2番Bメロ", "performer": "Vo(メイン)+ホーン", "note": "徐々に厚みが増していく"}, {"id": "song-01c06", "time": 91, "label": "サビ(2回目)", "performer": "全員", "note": "再びフルバンドの盛り上がり"}, {"id": "song-01c07", "time": 112, "label": "間奏/ギターソロ", "performer": "Gt(赤シャツ)", "note": "ギタリストの動きが大きくなり目立つ、波形も音量増"}, {"id": "song-01c08", "time": 133, "label": "ラスサビ", "performer": "全員", "note": "ボーカル・ギター共に動きが大きくクライマックス感"}, {"id": "song-01c09", "time": 150, "label": "アウトロ", "performer": "全員", "note": "演奏がまとまり終演へ、最後はheadbang等の締めの動き"}], "analyzed": true, "analysisNote": "映像は固定ワイドショット1台のみで音声書き起こしは行っておらず、波形も全体を通してほぼ一定の音量のため、セクション区切りは演奏者の身振り・動きと一般的なアニソン構成から推測した目安です。実際の楽曲構成とは異なる可能性があります。", "id": "song-01"}, {"order": 2, "title": "メカンダーロボ", "durationSec": 157, "cues": [{"id": "song-02c00", "time": 0, "label": "イントロ", "performer": "全員", "note": "波形は開始直後やや静か。バンド全体が構えており曲の入り"}, {"id": "song-02c01", "time": 14, "label": "Aメロ", "performer": "Vo(メイン/女性)", "note": "中央の女性ボーカルがマイクに寄り落ち着いて歌唱、身振りは控えめ"}, {"id": "song-02c02", "time": 35, "label": "Bメロ", "performer": "Vo(メイン/女性)", "note": "波形の密度が増し始め、盛り上がりに向かう歌唱"}, {"id": "song-02c03", "time": 49, "label": "サビ", "performer": "全員", "note": "波形に強いピークあり、バンド全体の音量が一段と上がる"}, {"id": "song-02c04", "time": 63, "label": "2番Aメロ", "performer": "Vo(メイン/女性)", "note": "落ち着いた歌唱に戻る"}, {"id": "song-02c05", "time": 77, "label": "2番Bメロ/掛け合い", "performer": "Vo(男性/黒Tシャツ)", "note": "左手前の男性ボーカルが積極的に歌う仕草、掛け合いパートの可能性"}, {"id": "song-02c06", "time": 98, "label": "間奏", "performer": "ホーン+ギター", "note": "波形の密度がやや落ち着く区間、トランペット/トロンボーン奏者の動きが目立つ"}, {"id": "song-02c07", "time": 119, "label": "ラスサビ", "performer": "Vo(男女)+全員", "note": "男性ボーカルが両腕を広げる大きな身振り、盛り上げの合図"}, {"id": "song-02c08", "time": 140, "label": "アウトロ/エンディング", "performer": "全員", "note": "男女ボーカルとも手を高く挙げるフィナーレ的な仕草"}], "analyzed": true, "analysisNote": "音声解析や歌詞照合は行っておらず、抽出フレームの映像(カメラは終始固定の全体俯瞰アングルで、演者ごとのカメラ切替は確認できません)と波形画像の音量変化のみから構成を推測した、あくまで参考用の仮説です。実際のタイミングは現場で要確認です。", "id": "song-02"}, {"order": 3, "title": "ジムボタン", "durationSec": 160, "cues": [{"id": "song-03c00", "time": 0, "label": "イントロ", "performer": "全員", "note": "ボーカルはマイク前で静止、演奏の入りを待つ様子。波形も静か"}, {"id": "song-03c01", "time": 8, "label": "Aメロ", "performer": "Vo(メイン)", "note": "歌い出し。抑えたジェスチャーで落ち着いたトーン"}, {"id": "song-03c02", "time": 21, "label": "Bメロ", "performer": "Vo(メイン)", "note": "手を挙げるなど動きが増え、盛り上がりに向かう"}, {"id": "song-03c03", "time": 35, "label": "サビ", "performer": "Vo(メイン)", "note": "波形の音量が上がる区間。ボーカルの身振りが大きくアップ向き"}, {"id": "song-03c04", "time": 63, "label": "2番Aメロ", "performer": "Vo(メイン)", "note": "一旦落ち着いた歌唱に戻る"}, {"id": "song-03c05", "time": 71, "label": "2番サビ", "performer": "Vo(メイン)", "note": "波形が最初のピークを迎える。ジェスチャー大きめ"}, {"id": "song-03c06", "time": 77, "label": "間奏", "performer": "バンド全体/ホーン・Gt", "note": "波形の音量がやや下がる区間。演奏パート強調の可能性"}, {"id": "song-03c07", "time": 98, "label": "Bメロ(終盤)", "performer": "Vo(メイン)", "note": "歌唱に戻り落ち着いたトーン、波形も上昇し始める"}, {"id": "song-03c08", "time": 119, "label": "大サビ前", "performer": "Vo(メイン)", "note": "口を大きく開けて声を張る強い一音"}, {"id": "song-03c09", "time": 140, "label": "ラスサビ", "performer": "Vo(メイン)", "note": "波形の後半最大ピークと一致。腕を大きく広げる最高潮の身振り"}, {"id": "song-03c10", "time": 154, "label": "アウトロ", "performer": "全員", "note": "表情が緩み、波形も収束方向。曲の締めくくり"}], "analyzed": true, "analysisNote": "この解析は音声認識ではなく、7秒間隔の静止画とラウドネス波形画像のみから目視・推測したものです。実際の曲構成とはズレがある可能性が高いため、本番前に音源で必ず確認してください。", "id": "song-03"}, {"order": 4, "title": "炎のさだめ", "durationSec": 201, "cues": [{"id": "song-04c00", "time": 0, "label": "イントロ", "performer": "全員", "note": "平均音量が最も静か。バンド全体が構えており導入部と推測"}, {"id": "song-04c01", "time": 8, "label": "Aメロ", "performer": "Vo(メイン)", "note": "音量上昇。ボーカルがマイク前で歌い出すタイミング"}, {"id": "song-04c02", "time": 27, "label": "Bメロ/盛り上がり", "performer": "Vo+Gt", "note": "ギターが厚みを増す変化点"}, {"id": "song-04c03", "time": 38, "label": "サビ①", "performer": "全員/ホーンセクション", "note": "区間内で最初の音量ピーク。ホーン隊が目立つ想定"}, {"id": "song-04c04", "time": 60, "label": "Aメロ②(2番)", "performer": "Vo(メイン)", "note": "音量がやや落ち着く、2番の入りと推測"}, {"id": "song-04c05", "time": 80, "label": "Bメロ②", "performer": "Vo+ホーン", "note": "再度盛り上がりに向けて音量上昇傾向"}, {"id": "song-04c06", "time": 100, "label": "間奏/ギターソロ", "performer": "Gt ソロ", "note": "全区間で最大の音量ピーク。ギターにカメラを"}, {"id": "song-04c07", "time": 120, "label": "ラスサビ", "performer": "全員", "note": "高い音量が持続、フルバンドの盛り上がり"}, {"id": "song-04c08", "time": 150, "label": "ラスサビ後半", "performer": "Vo+全員", "note": "持続的に大きい音量、ボーカルと全体を交互に"}, {"id": "song-04c09", "time": 178, "label": "アウトロ開始", "performer": "全員", "note": "音量が低下し始め、終息へ向かう変化点"}, {"id": "song-04c10", "time": 190, "label": "エンディング", "performer": "Vo(メイン)", "note": "音量低下、タンバリンを持つボーカルにフェード"}], "analyzed": true, "analysisNote": "映像は固定ワイドショット1台のみで音声書き起こしは行っておらず、波形の音量変化(10秒毎の平均音量)と演者の動きのみから構成を推測した仮のものです。実際の構成は必ずリハーサルで耳で確認してください。", "id": "song-04"}, {"order": 5, "title": "輝く瞳", "durationSec": 207, "cues": [{"id": "song-05c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形が最も静かな区間。演奏開始直後と推測"}, {"id": "song-05c01", "time": 9, "label": "Aメロ①", "performer": "ボーカル", "note": "波形の振幅が立ち上がり、ボーカルが歌唱を開始"}, {"id": "song-05c02", "time": 30, "label": "Bメロ①", "performer": "ボーカル", "note": "音量がやや増し、バンド全体の音圧も上がる過渡区間"}, {"id": "song-05c03", "time": 51, "label": "サビ①", "performer": "ボーカル+バンド全体", "note": "波形の密度が最大級。ギター・ホーン隊も含め全員が鳴っている印象"}, {"id": "song-05c04", "time": 79, "label": "Aメロ②", "performer": "ボーカル", "note": "一旦音圧がやや落ち着く二番Aメロと推測"}, {"id": "song-05c05", "time": 100, "label": "Bメロ②", "performer": "ボーカル", "note": "再び音量が盛り上がっていく区間"}, {"id": "song-05c06", "time": 121, "label": "サビ②", "performer": "ボーカル+バンド全体", "note": "サビ①と同様に音圧が高い区間"}, {"id": "song-05c07", "time": 142, "label": "間奏(ソロ想定)", "performer": "ギター/ホーン隊", "note": "歌唱が一時途切れると想定される中間区間"}, {"id": "song-05c08", "time": 168, "label": "ラスサビ", "performer": "ボーカル", "note": "片手を高く掲げる仕草、曲のクライマックスと推測"}, {"id": "song-05c09", "time": 190, "label": "エンディング/アウトロ", "performer": "バンド全体", "note": "波形がやや小さくなり、曲の締めくくりと推測"}], "analyzed": true, "analysisNote": "固定広角(魚眼)カメラでバンド全体を常時映しており、カメラが演者ごとに切り替わらないため、演者へのフォーカス推定は波形の音量変化とボーカルの身振りからの推測に過ぎません。音声解析や歌詞の書き起こしは行っていません。", "id": "song-05"}, {"order": 6, "title": "風のノーリプライ", "durationSec": 217, "cues": [{"id": "song-06c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形は小さめで導入部、演奏準備の様子"}, {"id": "song-06c01", "time": 14, "label": "Aメロ①", "performer": "ボーカル", "note": "ボーカルが歌い始める、表情は抑えめ"}, {"id": "song-06c02", "time": 36, "label": "Bメロ①", "performer": "ボーカル", "note": "身振りが増え盛り上がりに向かう、波形も上昇"}, {"id": "song-06c03", "time": 62, "label": "サビ①", "performer": "ボーカル", "note": "拳を上げるジェスチャー、波形が最初のピークに"}, {"id": "song-06c04", "time": 77, "label": "ブレイク/間奏", "performer": "バンド全体", "note": "波形が一時的に下がり音量が落ち着く区間"}, {"id": "song-06c05", "time": 98, "label": "Aメロ②(2番)", "performer": "ボーカル", "note": "ボーカル中心に戻り、音量は緩やかに再上昇"}, {"id": "song-06c06", "time": 126, "label": "サビ②(2番)", "performer": "ボーカル", "note": "持続的に音量が高く、ホーン・ギターも厚みを増す"}, {"id": "song-06c07", "time": 161, "label": "間奏(ギターフィーチャー)", "performer": "ギター/バンド全体", "note": "ギタリストの動きが大きくなりリフが強調される"}, {"id": "song-06c08", "time": 182, "label": "ラスサビ", "performer": "ボーカル", "note": "両手を大きく広げる仕草、波形も曲中最大レベル"}, {"id": "song-06c09", "time": 205, "label": "アウトロ", "performer": "バンド全体", "note": "音量がやや落ち着きフェード方向へ向かう"}, {"id": "song-06c10", "time": 213, "label": "エンディング", "performer": "ボーカル", "note": "表情が緩み演奏が終息していく"}], "analyzed": true, "analysisNote": "音声のテキスト化ではなく、抽出フレーム画像と音声波形(音量変化)のみからの目視・推測によるセクション分けです。歌詞や実際のコード進行は確認できないため、時間や区分けにはズレがある前提でご利用ください。", "id": "song-06"}, {"order": 7, "title": "バラバラマン", "durationSec": 192, "cues": [{"id": "song-07c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形は静かめ、演奏準備の雰囲気"}, {"id": "song-07c01", "time": 12, "label": "Aメロ", "performer": "ボーカル", "note": "ボーカルが歌い始める、音量は控えめで落ち着いた歌唱"}, {"id": "song-07c02", "time": 36, "label": "Bメロ", "performer": "ボーカル", "note": "波形がやや上昇し始め、サビに向けて徐々に盛り上がる"}, {"id": "song-07c03", "time": 54, "label": "サビ", "performer": "ボーカル+バンド", "note": "波形が明確に高くなり、バンド全体の音圧が上がる"}, {"id": "song-07c04", "time": 72, "label": "ブレイク/静パート", "performer": "ボーカル", "note": "波形が一時的に下がる静かな箇所、間奏前の溜めと推測"}, {"id": "song-07c05", "time": 78, "label": "盛り上げ", "performer": "ボーカル", "note": "両手を大きく広げる仕草、感情的な高まりのポイント"}, {"id": "song-07c06", "time": 90, "label": "2番Aメロ", "performer": "ボーカル", "note": "再び波形が落ち着く、2番の静かな入り"}, {"id": "song-07c07", "time": 108, "label": "2番サビ", "performer": "ボーカル+バンド", "note": "音量が再上昇し以降ほぼ持続的に大きい"}, {"id": "song-07c08", "time": 130, "label": "間奏/ソロ", "performer": "ギター", "note": "波形のピークの一つ、演奏陣が前のめりに演奏する様子"}, {"id": "song-07c09", "time": 158, "label": "ラスサビ", "performer": "ボーカル", "note": "拳を突き上げるなど最も大きな身振り、曲全体の最高潮"}, {"id": "song-07c10", "time": 186, "label": "アウトロ", "performer": "アコースティックギター", "note": "終盤で波形が減衰、ギターがアコースティックに持ち替わり静かに終わる"}], "analyzed": true, "analysisNote": "音声の書き起こしや解析を行わず、約6秒間隔の静止画フレームと音量波形のみから視覚的に推測した非常に粗い目安であり、実際の曲構成とは異なる可能性が高い点にご留意ください。", "id": "song-07"}, {"order": 8, "title": "少年期", "durationSec": 212, "cues": [{"id": "song-08c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形は静か、ボーカルはマイク前で準備、バンドは落ち着いた導入"}, {"id": "song-08c01", "time": 8, "label": "Aメロ", "performer": "ボーカル", "note": "波形やや上昇、ボーカル中心で歌唱、バンドは控えめ"}, {"id": "song-08c02", "time": 57, "label": "Bメロ", "performer": "ボーカル+バンド", "note": "音量が徐々に増加、サビに向けて盛り上がり始める"}, {"id": "song-08c03", "time": 85, "label": "サビ", "performer": "ボーカル+バンド全体", "note": "波形が最初のピーク、フル編成での盛り上がり"}, {"id": "song-08c04", "time": 93, "label": "Aメロ(2番)", "performer": "ボーカル", "note": "音量が一段落ち着く、静かなパートに戻る"}, {"id": "song-08c05", "time": 104, "label": "Bメロ(2番)", "performer": "ボーカル+バンド", "note": "再び音量が増加し始め、盛り上がりを準備"}, {"id": "song-08c06", "time": 136, "label": "サビ(2)", "performer": "ボーカル+バンド全体", "note": "持続的に音量大きい区間、フル編成"}, {"id": "song-08c07", "time": 154, "label": "間奏/ソロ", "performer": "トランペット/バイオリン", "note": "トランペット奏者・バイオリン奏者が目立つ動き"}, {"id": "song-08c08", "time": 165, "label": "ラスサビ", "performer": "ボーカル+バンド全体", "note": "波形は依然大きく持続、曲全体の最高潮部分と推測"}, {"id": "song-08c09", "time": 190, "label": "アウトロ", "performer": "バンド全体", "note": "波形が徐々に減衰、フェードアウトして終息"}], "analyzed": true, "analysisNote": "音声認識を伴わず、7秒間隔で抽出した静止画と音量波形画像のみに基づく目視・推測によるものです。カメラは固定の全体俯瞰(魚眼)ショットで演奏中ほぼ変化がないため、セクション区切りは音量変化と演奏者の動きから推測した仮のものです。", "id": "song-08"}, {"order": 9, "title": "風にひとりで", "durationSec": 215, "cues": [{"id": "song-09c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形が最も静かな部分。キーボード/ギター中心の静かな入り"}, {"id": "song-09c01", "time": 9, "label": "Aメロ", "performer": "ボーカル", "note": "音量やや上昇。ボーカルが歌い始める"}, {"id": "song-09c02", "time": 51, "label": "サビ(1番)", "performer": "ボーカル+バンド全体", "note": "波形が最初の大きな山。フルバンドの盛り上がり"}, {"id": "song-09c03", "time": 71, "label": "Aメロ(2番)", "performer": "ボーカル", "note": "音量が落ち着き、静かな2番へ"}, {"id": "song-09c04", "time": 86, "label": "Bメロ/間", "performer": "ボーカル", "note": "波形上もっとも音量が落ちる区間。抑えた歌唱部分と推測"}, {"id": "song-09c05", "time": 95, "label": "Bメロ(盛り上げ)", "performer": "ボーカル+バンド", "note": "徐々に音量が増加し始める"}, {"id": "song-09c06", "time": 131, "label": "サビ(2番)", "performer": "ボーカル+バンド全体", "note": "2つ目の大きな音量ピーク"}, {"id": "song-09c07", "time": 147, "label": "間奏(ホーンフィーチャー)", "performer": "トロンボーン/金管奏者", "note": "管楽器奏者が立ち上がり演奏する様子。間奏ソロと推測"}, {"id": "song-09c08", "time": 165, "label": "つなぎ/Bメロ再現", "performer": "ボーカル", "note": "ラスサビ前の高エネルギー継続部"}, {"id": "song-09c09", "time": 185, "label": "ラスサビ", "performer": "ボーカル+バンド全体", "note": "波形終盤の高音量が持続する最大の盛り上がり区間"}, {"id": "song-09c10", "time": 208, "label": "アウトロ", "performer": "バンド全体", "note": "波形が減衰していく終盤。フェードアウトで曲が終わる"}], "analyzed": true, "analysisNote": "固定広角(魚眼)カメラによるバンド全体の一発撮りで、カメラ切り替えは存在しません。音声解析や歌詞認識は行っておらず、波形の音量変化と演奏者の身振りのみからセクションを推測した、精度の低い仮説的なガイドです。", "id": "song-09"}, {"order": 10, "title": "SAYONARA", "durationSec": 385, "cues": [{"id": "song-10c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形は静か、固定ワイドショットでバンド全員が構える"}, {"id": "song-10c01", "time": 15, "label": "Aメロ1", "performer": "ボーカル", "note": "ボーカルが落ち着いたトーンで歌い始める"}, {"id": "song-10c02", "time": 48, "label": "Bメロ1", "performer": "ボーカル", "note": "波形がやや盛り上がり、歌唱がやや強まる"}, {"id": "song-10c03", "time": 107, "label": "サビ1", "performer": "ボーカル/バンド全体", "note": "波形最初の山、フルバンドで音量増加"}, {"id": "song-10c04", "time": 118, "label": "Aメロ2", "performer": "ボーカル", "note": "音量が落ち着き2番Aメロへ移行"}, {"id": "song-10c05", "time": 159, "label": "Bメロ2", "performer": "ボーカル", "note": "波形再上昇、サビに向けて盛り上げ"}, {"id": "song-10c06", "time": 201, "label": "サビ2", "performer": "ボーカル/バンド全体", "note": "2度目の音量の山、フルバンド"}, {"id": "song-10c07", "time": 220, "label": "間奏", "performer": "ホーン/ギター", "note": "サビ後にやや音量が下がる区間、管楽器・ギター中心と推測"}, {"id": "song-10c08", "time": 258, "label": "ブリッジ/Bメロ3", "performer": "ボーカル", "note": "波形が再上昇し歌唱が戻る"}, {"id": "song-10c09", "time": 300, "label": "ラスサビ", "performer": "ボーカル/バンド全体", "note": "ボーカルが仰け反り熱唱、波形終盤最大区間の始まり"}, {"id": "song-10c10", "time": 330, "label": "ラスサビ(続き)", "performer": "ボーカル/バンド全体", "note": "持続的に音量大、熱唱が続く"}, {"id": "song-10c11", "time": 352, "label": "アウトロ", "performer": "バンド全体", "note": "音量低下、ボーカルが穏やかになり終演の身振り"}], "analyzed": true, "analysisNote": "音声波形の音量変化と固定広角ワンショット映像内でのボーカルの歌唱動作のみから推測したものであり、実際の歌詞や演奏内容を確認したものではないため、目安として扱ってください。", "id": "song-10"}, {"order": 11, "title": "ダルタニアス", "durationSec": 184, "cues": [{"id": "song-11c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "静止画では準備姿勢、波形も比較的低め。曲の入り"}, {"id": "song-11c01", "time": 8, "label": "Aメロ", "performer": "女性ボーカル", "note": "ボーカルが歌い始める、ホーン隊は概ね静止"}, {"id": "song-11c02", "time": 30, "label": "Bメロ", "performer": "女性ボーカル", "note": "ホーン奏者は休止、ボーカル中心のフレーズ"}, {"id": "song-11c03", "time": 50, "label": "サビ", "performer": "女性ボーカル+バンド全体", "note": "波形の音量が上昇、ボーカルが腕を広げるジェスチャー"}, {"id": "song-11c04", "time": 76, "label": "ブレイク/間奏前", "performer": "女性ボーカル", "note": "波形にやや落ち込みあり"}, {"id": "song-11c05", "time": 84, "label": "間奏(ヴァイオリン)", "performer": "ヴァイオリン", "note": "ヴァイオリニストが弓を高く掲げ活発に演奏"}, {"id": "song-11c06", "time": 100, "label": "2番Aメロ", "performer": "女性ボーカル", "note": "再びボーカル中心、バンドは伴奏に回る"}, {"id": "song-11c07", "time": 122, "label": "2番サビ前半", "performer": "女性ボーカル+バンド全体", "note": "波形が再上昇、全体で音圧が増す"}, {"id": "song-11c08", "time": 140, "label": "ラスサビ", "performer": "バンド全体", "note": "波形が全編中最も高いエネルギー帯、クライマックス"}, {"id": "song-11c09", "time": 168, "label": "アウトロ", "performer": "バンド全体", "note": "高エネルギーが持続しつつ曲の締めに向かう"}, {"id": "song-11c10", "time": 180, "label": "エンディング", "performer": "バンド全体", "note": "演奏終了直前、全体でまとめる"}], "analyzed": true, "analysisNote": "音声解析や歌詞認識は行っておらず、抽出静止画の人物の動き・楽器の構え方と、波形画像から見た音量変化のみから推測した仮の構成です。実際のセクション境界とはずれている可能性があります。", "id": "song-11"}, {"order": 12, "title": "地球に I LOVE YOU", "durationSec": 226, "cues": [{"id": "song-12c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形は静かな立ち上がり、ボーカルはマイク前で構え中"}, {"id": "song-12c01", "time": 15, "label": "Aメロ", "performer": "ボーカル", "note": "ホーン隊は静止、ボーカル中心の落ち着いた歌い出し"}, {"id": "song-12c02", "time": 45, "label": "Bメロ", "performer": "ボーカル+ホーン", "note": "トランペット・トロンボーンが動き出し盛り上がりの準備"}, {"id": "song-12c03", "time": 60, "label": "サビ", "performer": "ボーカル+バンド全体", "note": "波形の音量が上昇、ボーカルの身振りが大きくなる"}, {"id": "song-12c04", "time": 102, "label": "Aメロ(2番)", "performer": "ボーカル", "note": "音量がやや落ち着き、静かな歌唱に戻る"}, {"id": "song-12c05", "time": 124, "label": "Bメロ/ブリッジ", "performer": "ボーカル", "note": "波形が最も静かな谷、抑えた表現"}, {"id": "song-12c06", "time": 150, "label": "間奏・ソロ", "performer": "ギター/ホーン", "note": "音量再上昇、ギタリストとホーン隊の動きが活発化"}, {"id": "song-12c07", "time": 172, "label": "ラスサビ", "performer": "ボーカル+バンド全体", "note": "波形が全体で最大域、ボーカルの表情・身振りも大きい"}, {"id": "song-12c08", "time": 210, "label": "クライマックス", "performer": "ボーカル", "note": "両腕を大きく広げるジェスチャー、感情的な盛り上がり"}, {"id": "song-12c09", "time": 217, "label": "アウトロ", "performer": "バンド全体", "note": "波形が減衰し始め、ボーカルは笑顔で締めくくる様子"}], "analyzed": true, "analysisNote": "音声波形の音量変化と映像の視覚情報のみに基づく推測であり、歌詞や音声内容を実際に確認したものではありません。目安としてご利用ください。", "id": "song-12"}, {"order": 13, "title": "ゲッターロボ", "durationSec": 192, "cues": [{"id": "song-13c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形の振幅が小さめでフェードイン的な立ち上がり"}, {"id": "song-13c01", "time": 10, "label": "Aメロ①", "performer": "女性Vo", "note": "落ち着いた立ち姿でマイクに向かい歌唱"}, {"id": "song-13c02", "time": 26, "label": "Bメロ①", "performer": "女性Vo", "note": "上体の動きがやや増え始める"}, {"id": "song-13c03", "time": 42, "label": "サビ①", "performer": "バンド全体/女性Vo", "note": "波形の音量が上がり全体が一体感を持って演奏"}, {"id": "song-13c04", "time": 60, "label": "Aメロ②", "performer": "女性Vo", "note": "再び落ち着いたトーンに戻る"}, {"id": "song-13c05", "time": 78, "label": "Bメロ②", "performer": "女性Vo", "note": "手を上げるジェスチャーが増え盛り上がりの予兆"}, {"id": "song-13c06", "time": 96, "label": "サビ②", "performer": "女性Vo+男性Vo", "note": "男性Voも歌唱に参加しデュエット的"}, {"id": "song-13c07", "time": 122, "label": "間奏/ギターソロ", "performer": "ギター(フライングV)", "note": "ボーカルの動きが一旦落ち着き楽器隊が目立つ想定区間"}, {"id": "song-13c08", "time": 148, "label": "ラスサビ", "performer": "女性Vo+バンド全体", "note": "身振りが最も大きくなる区間、ダンス的な動作も見られる"}, {"id": "song-13c09", "time": 172, "label": "アウトロ", "performer": "バンド全体", "note": "動きが収束し始め波形も減衰傾向"}, {"id": "song-13c10", "time": 186, "label": "エンディング", "performer": "女性Vo", "note": "静かな仕草で締めくくり、演奏終了間際"}], "analyzed": true, "analysisNote": "固定広角1カメのみで終始カット割りがないリハーサル収録のため、音声書き起こしは行わず、波形の音量変化とボーカルの身振り・演奏動作から曲構成をラフに推測したものです。実際の曲構成やタイミングとは異なる可能性が高い点にご注意ください。", "id": "song-13"}, {"order": 14, "title": "エルガイム", "durationSec": 182, "cues": [{"id": "song-14c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形は静かめ、キーボード・ギターが控えめに鳴っている"}, {"id": "song-14c01", "time": 20, "label": "Aメロ", "performer": "Vo(女性リード)", "note": "ボーカルが落ち着いた様子で歌い始める、波形やや上昇"}, {"id": "song-14c02", "time": 40, "label": "Bメロ", "performer": "Vo", "note": "波形の密度が増し始める、ボーカルの動きが大きくなる"}, {"id": "song-14c03", "time": 55, "label": "サビ", "performer": "Vo+バンド全体", "note": "波形ピーク、ボーカルが腕を広げるジェスチャーで盛り上げる"}, {"id": "song-14c04", "time": 82, "label": "2番Aメロ", "performer": "Vo", "note": "波形にピーク後、やや落ち着く区間"}, {"id": "song-14c05", "time": 100, "label": "2番Bメロ", "performer": "Vo", "note": "再び音量が上がり始める"}, {"id": "song-14c06", "time": 110, "label": "サビ", "performer": "Vo+バンド全体", "note": "波形ピーク、ボーカルが拳を上げるなど高揚した仕草"}, {"id": "song-14c07", "time": 123, "label": "間奏/ソロ", "performer": "ギター/ホーン隊", "note": "波形に短い密集ピーク、器楽が目立つ区間と推測"}, {"id": "song-14c08", "time": 140, "label": "ラスサビ前", "performer": "Vo+バンド全体", "note": "音量が再度上昇、盛り上がりに向かう"}, {"id": "song-14c09", "time": 156, "label": "ラスサビ", "performer": "Vo+バンド全体", "note": "波形が全体で最も高いピークの一つ、フルバンドの一体感"}, {"id": "song-14c10", "time": 172, "label": "アウトロ", "performer": "バンド全体", "note": "波形が徐々に減衰しフェードアウト"}], "analyzed": true, "analysisNote": "音声認識ではなく、抽出フレーム画像(6秒間隔)とラウドネス波形画像の目視観察のみに基づく推測です。カメラは終始バンド全体を映す固定広角(魚眼)ショットのため人物の切り替えはなく、実際の曲構成やソロ楽器とは異なる可能性が高い点にご留意ください。", "id": "song-14"}, {"order": 15, "title": "ブレイバーン〜よろしくチューニング", "durationSec": 495, "cues": [{"id": "song-15c00", "time": 0, "label": "曲1:イントロ", "performer": "バンド全体", "note": "波形が小さく静かな立ち上がり"}, {"id": "song-15c01", "time": 12, "label": "曲1:Aメロ", "performer": "ボーカル", "note": "ボーカルがマイクを構え歌唱開始"}, {"id": "song-15c02", "time": 45, "label": "曲1:Bメロ", "performer": "ボーカル+バンド", "note": "音量やや上昇、バンド全体で演奏"}, {"id": "song-15c03", "time": 75, "label": "曲1:サビ", "performer": "ボーカル+バンド全体", "note": "波形が最大振幅、タンバリンを高く掲げる動作"}, {"id": "song-15c04", "time": 110, "label": "曲1:Aメロ2", "performer": "ボーカル", "note": "音量がやや落ち着く"}, {"id": "song-15c05", "time": 145, "label": "曲1:Bメロ2", "performer": "ボーカル+バンド", "note": "徐々に音量上昇"}, {"id": "song-15c06", "time": 175, "label": "曲1:サビ2/間奏", "performer": "バンド全体(楽器隊)", "note": "持続的な高音量、間奏の可能性"}, {"id": "song-15c07", "time": 217, "label": "曲1:ブレイク", "performer": "バンド全体", "note": "波形に短い落ち込み、ボーカルの動きも小さくなる"}, {"id": "song-15c08", "time": 230, "label": "曲1:ラスサビ", "performer": "ボーカル+バンド全体", "note": "再び音量最大に回復"}, {"id": "song-15c09", "time": 314, "label": "曲1:間", "performer": "バンド全体", "note": "短い静音区間、フレーズの切れ目"}, {"id": "song-15c10", "time": 321, "label": "曲1:アウトロ前半", "performer": "ボーカル+バンド", "note": "音量再上昇、盛り上がり継続"}, {"id": "song-15c11", "time": 360, "label": "曲1:アウトロ", "performer": "バンド全体", "note": "曲の終盤、演奏継続"}, {"id": "song-15c12", "time": 390, "label": "曲1→曲2:転換(MC/拍手想定)", "performer": "ボーカル(MC想定)", "note": "約20秒間の顕著な静音区間、曲間つなぎと推定"}, {"id": "song-15c13", "time": 410, "label": "曲2:イントロ", "performer": "バンド全体", "note": "小音量から再始動"}, {"id": "song-15c14", "time": 424, "label": "曲2:Aメロ", "performer": "ボーカル", "note": "歌唱再開、音量上昇"}, {"id": "song-15c15", "time": 450, "label": "曲2:サビ", "performer": "ボーカル+バンド全体", "note": "波形が再び最大振幅"}, {"id": "song-15c16", "time": 475, "label": "曲2:アウトロ/エンディング", "performer": "バンド全体", "note": "終盤に向け演奏継続、映像終端"}], "analyzed": true, "analysisNote": "音声認識は行っておらず、抽出フレーム画像と波形の音量変化のみからの推測です。実際の映像は固定広角のバンド全体ショットで個別カメラ切替が確認できないため、演者指定は波形の緩急とボーカルの身振りからの推定に留まります。タイトル通り2曲メドレーの可能性が高く、385〜406秒付近の長い静音区間を曲間の転換点と推定しました。", "id": "song-15"}, {"order": 16, "title": "よろしくチューニング", "durationSec": 316, "cues": [{"id": "song-16c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "開始時点で女性ボーカルは既にマイク前に構えている"}, {"id": "song-16c01", "time": 10, "label": "Aメロ(1番)", "performer": "女性ボーカル", "note": "波形は中程度の音量、落ち着いたテンポで歌い出し"}, {"id": "song-16c02", "time": 40, "label": "Bメロ(1番)", "performer": "女性+男性コーラス", "note": "波形が一瞬小さくなった直後に上昇、男性ボーカルも参加"}, {"id": "song-16c03", "time": 65, "label": "サビ(1番)", "performer": "バンド全体", "note": "波形の音量・密度が明確に増大、全員で盛り上がる区間"}, {"id": "song-16c04", "time": 127, "label": "つなぎ/2番Aメロ", "performer": "女性ボーカル", "note": "波形が一瞬落ち着くタイミング、2番に入ると推測"}, {"id": "song-16c05", "time": 155, "label": "2番Bメロ", "performer": "女性+男性ボーカル", "note": "男女ボーカルの掛け合いのような動きが見える"}, {"id": "song-16c06", "time": 175, "label": "大サビ/間奏", "performer": "バンド全体", "note": "波形が最も長く高音量を維持する区間、演奏全体が厚い"}, {"id": "song-16c07", "time": 216, "label": "コール&レスポンス", "performer": "女性ボーカル(タンバリン)", "note": "両手を挙げてタンバリンを鳴らし客席を煽る仕草"}, {"id": "song-16c08", "time": 245, "label": "ブレイク/静かな展開", "performer": "女性ボーカル", "note": "波形上で最も音量が小さくなる箇所、抑えた演奏と推測"}, {"id": "song-16c09", "time": 258, "label": "ラストサビ", "performer": "バンド全体", "note": "波形が再び最大音量に、ギタリストも拳を挙げる高揚した動き"}, {"id": "song-16c10", "time": 288, "label": "アウトロ前半", "performer": "バンド全体", "note": "高音量を維持したまま演奏継続"}, {"id": "song-16c11", "time": 306, "label": "エンディング", "performer": "バンド全体", "note": "女性ボーカルが後ろを振り返り締めのポーズ"}], "analyzed": true, "analysisNote": "音声認識は行っておらず、抽出フレーム画像と波形(音量)画像から視覚的に推測した大まかな構成です。実際の歌詞展開やソロの正確な位置とは異なる可能性が高いです。", "id": "song-16"}, {"order": 17, "title": "SHOW ME YOUR SPACE", "durationSec": 176, "cues": [{"id": "song-17c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形の振幅が小さく静かな出だし"}, {"id": "song-17c01", "time": 16, "label": "Aメロ", "performer": "ボーカル", "note": "歌い出し、中央マイクの女性ボーカルが中心"}, {"id": "song-17c02", "time": 35, "label": "Bメロ", "performer": "ボーカル", "note": "波形の音量が徐々に増加、サビへの助走"}, {"id": "song-17c03", "time": 49, "label": "サビ", "performer": "ボーカル+バンド全体", "note": "波形の振幅が大きく盛り上がる最初のサビと推測"}, {"id": "song-17c04", "time": 70, "label": "Aメロ2", "performer": "ボーカル", "note": "音量がやや落ち着き2番Aメロ相当と推測"}, {"id": "song-17c05", "time": 88, "label": "Bメロ2", "performer": "ボーカル", "note": "再び音量が増加し次の盛り上がりへ"}, {"id": "song-17c06", "time": 107, "label": "間奏/ソロ", "performer": "ギターまたは管楽器", "note": "波形に突出した大きなピーク、楽器ソロの可能性が高い"}, {"id": "song-17c07", "time": 114, "label": "サビ2", "performer": "ボーカル+バンド全体", "note": "厚みのある音圧が持続"}, {"id": "song-17c08", "time": 132, "label": "ラスサビ", "performer": "ボーカル+バンド全体", "note": "曲中最も密度の高い区間、転調や大きな盛り上がりの可能性"}, {"id": "song-17c09", "time": 160, "label": "エンディング前アクセント", "performer": "バンド全体", "note": "大きなピークの後、音量が減衰し始める"}, {"id": "song-17c10", "time": 168, "label": "アウトロ", "performer": "バンド全体", "note": "音量が徐々に下がり終演"}], "analyzed": true, "analysisNote": "音声の書き起こしは行っておらず、音量波形画像と定点の広角映像フレームのみからの推測です。セクション区切りや担当楽器・ボーカルの当ては目安としてご利用ください。", "id": "song-17"}, {"order": 18, "title": "シビビーン・ラプソディー", "durationSec": 144, "cues": [{"id": "song-18c00", "time": 0, "label": "イントロ", "performer": "バンド全体", "note": "波形が最も静かな区間。全員が構えている様子で曲の入り"}, {"id": "song-18c01", "time": 10, "label": "Aメロ", "performer": "女性リードボーカル", "note": "ボーカルが歌い出し、波形が立ち上がり始める"}, {"id": "song-18c02", "time": 30, "label": "Bメロ/盛り上げ", "performer": "ボーカル+バンド", "note": "波形の振幅が増し、演奏全体が厚みを増す"}, {"id": "song-18c03", "time": 58, "label": "サビ", "performer": "女性ボーカル", "note": "腕を高く掲げる仕草、波形も高エネルギー"}, {"id": "song-18c04", "time": 71, "label": "ブレイク/間奏", "performer": "トロンボーン等ホーン", "note": "波形に明確な谷、静かになる区間。管楽器が目立つ可能性"}, {"id": "song-18c05", "time": 80, "label": "2番Aメロ", "performer": "女性ボーカル", "note": "再度ボーカル中心に戻り、波形も再上昇"}, {"id": "song-18c06", "time": 102, "label": "ギター/楽器ソロ", "performer": "ギタリスト", "note": "波形に鋭いピーク、ボーカルも大きく腕を振る"}, {"id": "song-18c07", "time": 116, "label": "大サビ/クライマックス", "performer": "ボーカル+バンド全員", "note": "曲中最も持続的に音量が大きい区間、全員が一体感のある演奏"}, {"id": "song-18c08", "time": 134, "label": "アウトロ", "performer": "バンド全員", "note": "波形が徐々に減衰し始める"}, {"id": "song-18c09", "time": 141, "label": "エンディング", "performer": "バンド全員", "note": "波形がほぼ消え、曲が静かに終わる"}], "analyzed": true, "analysisNote": "音声認識ではなく、静止画フレーム(6秒間隔)とオーディオ波形の目視推測に基づく大まかな見立てであり、実際の曲構成とは異なる可能性があります。元映像は固定広角(魚眼)の見取り用カメラ1台のみで、演者の推定は身振り・楽器の動きからの類推です。", "id": "song-18"}, {"order": 19, "title": "ゲッターロボ (2)", "durationSec": 201, "cues": [{"id": "song-19c00", "time": 0, "label": "イントロ", "performer": "全員(ホーン+バンド)", "note": "トランペット・トロンボーンが並び、バンド全体で力強く開始"}, {"id": "song-19c01", "time": 18, "label": "Aメロ(1番)", "performer": "Vo(女性)", "note": "ボーカルが体を軽く揺らしながら落ち着いて歌唱"}, {"id": "song-19c02", "time": 40, "label": "Bメロ(1番)", "performer": "Vo中心", "note": "波形がやや落ち着き、サビ前の溜めのフレーズ"}, {"id": "song-19c03", "time": 63, "label": "サビ(1番)", "performer": "Vo", "note": "ボーカルが腕を大きく振り上げ、波形も上昇、盛り上がり"}, {"id": "song-19c04", "time": 90, "label": "Aメロ(2番)", "performer": "Vo", "note": "動きが落ち着き、再び歌唱主体の展開に戻る"}, {"id": "song-19c05", "time": 112, "label": "Bメロ(2番)", "performer": "Vo+バンド", "note": "上を向く仕草など表情の変化、サビへ向けて緊張感"}, {"id": "song-19c06", "time": 132, "label": "サビ(2番)", "performer": "Vo", "note": "波形ピーク付近、ボーカルのアクションが最も大きい区間"}, {"id": "song-19c07", "time": 152, "label": "間奏/ソロ", "performer": "ギター/ホーン隊", "note": "ボーカルが下がり気味の動き、ギターやホーンに注目が移る想定区間"}, {"id": "song-19c08", "time": 175, "label": "ラスサビ", "performer": "Vo(男性ボーカルも絶唱)", "note": "右側の男性ボーカルが口を大きく開けて熱唱、クライマックス"}, {"id": "song-19c09", "time": 192, "label": "アウトロ/エンディング", "performer": "全員", "note": "終盤に向けてバンド全体で締めくくりのフレーズ"}], "analyzed": true, "analysisNote": "音声の書き起こしではなく、7秒間隔の静止画と音量波形から推測した目安であり、実際の曲構成とは異なる可能性があります。カメラは終始固定の広角(魚眼)アングルのため、カット割りではなくボーカルの動き・体の向き・波形の強弱から推定しています。", "id": "song-19"}];
+
+  function cloneSeed(){
+    return SEED_FULL.map(function(s){
+      return {
+        id: s.id, order: s.order, title: s.title, durationSec: s.durationSec,
+        analyzed: !!s.analyzed, analysisNote: s.analysisNote || '',
+        cues: s.cues.map(function(c){ return {id:c.id, time:c.time, label:c.label, performer:c.performer, note:c.note}; })
+      };
+    });
+  }
+
+  function defaultCuesForNewSong(durationSec){
+    return [
+      {id: uid(), time: 0, label: 'イントロ', performer:'', note:''},
+      {id: uid(), time: Math.round(durationSec*0.4), label: 'サビ', performer:'', note:''},
+      {id: uid(), time: Math.round(durationSec*0.85), label: 'アウトロ', performer:'', note:''}
+    ];
+  }
+
+  function fmtTime(sec){
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec/60), s = sec%60;
+    return m+':'+String(s).padStart(2,'0');
+  }
+
+  function parseTime(str){
+    str = (str||'').trim();
+    var m = str.match(/^(\d{1,3}):([0-5]?\d)$/);
+    if (m) return parseInt(m[1],10)*60+parseInt(m[2],10);
+    if (/^\d+$/.test(str)) return parseInt(str,10);
+    return null;
+  }
+
+  function hue(str){
+    var h = 0;
+    for (var i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) % 360;
+    return h;
+  }
+
+  function performerStyle(name){
+    if (!name) return '';
+    var h = hue(name);
+    return 'color:hsl('+h+',85%,72%);background:hsla('+h+',75%,55%,.16);border:1px solid hsla('+h+',75%,60%,.35);';
+  }
+
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ---------------- state ---------------- */
+  var state = {
+    db: null,
+    dbReady: false,
+    songs: [],           // [{id, order, title, durationSec, cues:[...]}]
+    selectedId: null,
+    editMode: false,
+    editingCueId: null,
+    editingSongTitle: false,
+    editingDuration: false,
+    addingCue: false,
+    running: false,
+    elapsedMs: 0,
+    startEpoch: 0,
+    lastCurrentCueId: undefined,
+    lastSaveOk: true
+  };
+
+  var els = {};
+  var tickTimer = null;
+  var toastTimer = null;
+
+  function localGet(k, fallback){
+    try { var v = localStorage.getItem(k); return v==null?fallback:v; } catch(e){ return fallback; }
+  }
+  function localSet(k,v){
+    try { localStorage.setItem(k,v); return true; } catch(e){ return false; }
+  }
+
+  function showToast(msg, isError){
+    var el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast show' + (isError ? ' error' : '');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.className = 'toast'; }, 2200);
+  }
+
+  async function exportBackup(){
+    var data = JSON.stringify(state.songs, null, 2);
+    var d = new Date();
+    var pad = function(n){ return String(n).padStart(2,'0'); };
+    var filename = 'switchcue_backup_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.json';
+
+    if (window.claude && window.claude.use){
+      try{
+        var downloads = await window.claude.use('downloads');
+        if (downloads){
+          await downloads.save({filename:filename, data:new Blob([data], {type:'application/json'})});
+          showToast('バックアップファイルを書き出しました');
+          return;
+        }
+      } catch(e){
+        if (e && e.code==='declined'){ return; }
+        showToast('書き出しに失敗しました', true);
+        return;
+      }
+    }
+    try{
+      var blob = new Blob([data], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      showToast('バックアップファイルを書き出しました');
+    } catch(e){
+      showToast('書き出しに失敗しました', true);
+    }
+  }
+
+  function importBackupFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var parsed;
+      try{
+        parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed) || !parsed.length) throw new Error('empty');
+      } catch(e){
+        showToast('読み込みに失敗しました（ファイル形式を確認してください）', true);
+        return;
+      }
+      if (!confirm('現在のデータを、このバックアップファイルの内容で置き換えます。よろしいですか？')) return;
+      var oldSongs = state.songs;
+      state.songs = parsed;
+      if (!state.songs.some(function(s){ return s.id===state.selectedId; })){
+        state.selectedId = state.songs.length ? state.songs[0].id : null;
+      }
+      if (state.db){
+        var newIds = parsed.map(function(s){ return s.id; });
+        oldSongs.forEach(function(old){
+          if (newIds.indexOf(old.id)===-1) state.db.doc('songs/'+old.id).delete().catch(function(){});
+        });
+        parsed.forEach(function(s){
+          state.db.doc('songs/'+s.id).set({
+            order:s.order, title:s.title, durationSec:s.durationSec,
+            cues:s.cues||[], analyzed:!!s.analyzed, analysisNote:s.analysisNote||''
+          }).catch(function(){});
+        });
+      } else {
+        saveLocal();
+      }
+      renderAll();
+      showToast('バックアップを読み込みました');
+    };
+    reader.onerror = function(){ showToast('ファイルの読み込みに失敗しました', true); };
+    reader.readAsText(file);
+  }
+
+  function currentSong(){
+    return state.songs.find(function(s){ return s.id===state.selectedId; }) || null;
+  }
+
+  function sortedCues(song){
+    if (!song) return [];
+    return song.cues.slice().sort(function(a,b){ return a.time-b.time; });
+  }
+
+  function elapsedSec(){
+    if (state.running) return (performance.now() - state.startEpoch)/1000;
+    return state.elapsedMs/1000;
+  }
+
+  function findCurrentAndNext(cues, t){
+    var current = null, next = null;
+    for (var i=0;i<cues.length;i++){
+      if (cues[i].time <= t) current = cues[i]; else { next = cues[i]; break; }
+    }
+    return {current:current, next:next};
+  }
+
+  /* ---------------- db ---------------- */
+  var unsubscribe = null;
+
+  async function initDb(){
+    if (window.claude && window.claude.use){
+      try { state.db = await window.claude.use('db'); } catch(e){ state.db = null; }
+    }
+    if (state.db){
+      state.dbReady = true;
+      subscribeSongs();
+      return;
+    }
+    loadLocalOrSeed();
+    renderAll();
+  }
+
+  function loadLocalOrSeed(){
+    var raw = localGet('switchcue_songs_v1', null);
+    if (raw){
+      try{
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) state.songs = parsed;
+      } catch(e){}
+    }
+    if (!state.songs.length){
+      state.songs = cloneSeed();
+      saveLocal();
+    }
+    if (!state.selectedId || !state.songs.some(function(s){return s.id===state.selectedId;})){
+      state.selectedId = state.songs[0].id;
+    }
+  }
+
+  function saveLocal(){
+    localSet('switchcue_songs_v1', JSON.stringify(state.songs));
+  }
+
+  function subscribeSongs(){
+    var col = state.db.collection('songs');
+    unsubscribe = col.orderBy('order').onSnapshot(function(snap){
+      var songs = snap.docs.map(function(d){
+        var data = d.data() || {};
+        return {
+          id: d.id,
+          order: typeof data.order==='number' ? data.order : 0,
+          title: data.title || '(無題)',
+          durationSec: typeof data.durationSec==='number' ? data.durationSec : 180,
+          cues: Array.isArray(data.cues) ? data.cues : [],
+          analysisNote: data.analysisNote || '',
+          analyzed: !!data.analyzed
+        };
+      });
+      var wasEmpty = state.songs.length===0 && !state.selectedId;
+      state.songs = songs;
+      if (songs.length===0){
+        seedSongs();
+        return;
+      }
+      if (!state.selectedId || !songs.some(function(s){return s.id===state.selectedId;})){
+        state.selectedId = songs[0].id;
+      }
+      renderAll();
+    }, function(err){
+      state.db = null;
+      renderAll();
+    });
+  }
+
+  var seeding = false;
+  async function seedSongs(){
+    if (seeding) return;
+    seeding = true;
+    try{
+      var seed = cloneSeed();
+      for (var i=0;i<seed.length;i++){
+        var s = seed[i];
+        var ref = state.db.doc('songs/'+s.id);
+        var snap = await ref.get();
+        if (!snap.exists){
+          await ref.set({
+            order:s.order, title:s.title, durationSec:s.durationSec,
+            cues:s.cues, analyzed:s.analyzed, analysisNote:s.analysisNote
+          });
+        }
+      }
+    } catch(e){ /* leave whatever got created */ }
+    seeding = false;
+  }
+
+  function persistAndNotify(remoteWrite){
+    if (state.db){
+      state.lastSaveOk = true;
+      renderAll();
+      showToast('保存しました（クラウド）');
+      remoteWrite().catch(function(){
+        state.lastSaveOk = false;
+        var el = document.getElementById('saveStatus');
+        if (el) el.className = 'save-status bad';
+        showToast('保存に失敗しました。通信状況を確認してください', true);
+      });
+    } else {
+      var ok = saveLocal();
+      state.lastSaveOk = ok;
+      renderAll();
+      showToast(ok ? '保存しました（この端末に保存）' : '保存できません。右上の「⬇」でバックアップを書き出してください', !ok);
+    }
+  }
+
+  function writeCues(songId, cues){
+    var song = state.songs.find(function(s){return s.id===songId;});
+    if (song) song.cues = cues; // optimistic
+    persistAndNotify(function(){ return state.db.doc('songs/'+songId).update({cues:cues}); });
+  }
+
+  function writeSongField(songId, field, value){
+    var song = state.songs.find(function(s){return s.id===songId;});
+    if (song) song[field] = value;
+    persistAndNotify(function(){
+      var patch = {}; patch[field]=value;
+      return state.db.doc('songs/'+songId).update(patch);
+    });
+  }
+
+  function addSong(){
+    var order = state.songs.reduce(function(m,s){return Math.max(m,s.order);},0)+1;
+    var id = 'song-'+uid();
+    var song = {id:id, order:order, title:'新しい曲', durationSec:180, cues: defaultCuesForNewSong(180), analyzed:false, analysisNote:''};
+    state.songs.push(song);
+    state.selectedId = id;
+    persistAndNotify(function(){
+      return state.db.doc('songs/'+id).set({order:order,title:song.title,durationSec:song.durationSec,cues:song.cues,analyzed:false,analysisNote:''});
+    });
+  }
+
+  function deleteSong(songId){
+    var idx = state.songs.findIndex(function(s){return s.id===songId;});
+    if (idx<0) return;
+    var wasSelected = state.selectedId===songId;
+    state.songs.splice(idx,1);
+    if (wasSelected) state.selectedId = state.songs.length ? state.songs[Math.min(idx,state.songs.length-1)].id : null;
+    persistAndNotify(function(){ return state.db.doc('songs/'+songId).delete(); });
+  }
+
+  /* ---------------- transport ---------------- */
+  function play(){
+    if (state.running) return;
+    state.startEpoch = performance.now() - state.elapsedMs;
+    state.running = true;
+    startTicking();
+    renderTransport();
+  }
+  function pause(){
+    if (!state.running) return;
+    state.elapsedMs = performance.now() - state.startEpoch;
+    state.running = false;
+    stopTicking();
+    renderTransport();
+    renderNowNext();
+  }
+  function reset(){
+    state.running = false;
+    state.elapsedMs = 0;
+    stopTicking();
+    state.lastCurrentCueId = undefined;
+    renderTransport();
+    renderNowNext();
+    scrollToCurrent();
+  }
+  function nudge(deltaSec){
+    var ms = deltaSec*1000;
+    if (state.running) state.startEpoch -= ms;
+    else state.elapsedMs = Math.max(0, state.elapsedMs+ms);
+    renderNowNext();
+  }
+  function jumpTo(sec){
+    state.elapsedMs = Math.max(0, sec*1000);
+    if (state.running) state.startEpoch = performance.now() - state.elapsedMs;
+    renderNowNext();
+  }
+  function startTicking(){
+    stopTicking();
+    tickTimer = setInterval(renderNowNext, 240);
+  }
+  function stopTicking(){
+    if (tickTimer){ clearInterval(tickTimer); tickTimer=null; }
+  }
+
+  /* ---------------- render ---------------- */
+  function renderAll(){
+    renderShell();
+  }
+
+  function renderShell(){
+    var app = document.getElementById('app');
+    var song = currentSong();
+    app.innerHTML =
+      '<div class="header">'+
+        '<div class="header-top">'+
+          '<div class="brand">'+
+            '<span class="brand-mark">スイッチ<span class="dot">キュー</span></span>'+
+            '<span class="save-status'+(state.lastSaveOk===false?' bad':'')+'" id="saveStatus"><span class="dot"></span><span class="label">'+(state.db?'クラウド保存':'この端末に保存')+'</span></span>'+
+          '</div>'+
+          '<div class="hdr-actions">'+
+            '<button class="icon-btn" id="exportBtn" title="バックアップをファイルに書き出す">⬇</button>'+
+            '<button class="icon-btn" id="importBtn" title="バックアップファイルを読み込む">⬆</button>'+
+            '<input type="file" id="importInput" accept="application/json" style="display:none">'+
+            '<div class="mode-toggle'+(state.editMode?' on':'')+'" id="modeToggle"><div class="switch"></div><span>'+(state.editMode?'編集中':'編集')+'</span></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="songrail" id="songrail"></div>'+
+      '</div>'+
+      '<div class="main" id="main"></div>'+
+      '<div class="transport" id="transport" style="position:relative;"></div>'+
+      '<div class="toast" id="toast"></div>';
+
+    els.songrail = document.getElementById('songrail');
+    els.main = document.getElementById('main');
+    els.transport = document.getElementById('transport');
+
+    document.getElementById('modeToggle').onclick = function(){
+      state.editMode = !state.editMode;
+      state.editingCueId = null;
+      state.editingSongTitle = false;
+      state.editingDuration = false;
+      renderAll();
+    };
+    document.getElementById('exportBtn').onclick = exportBackup;
+    document.getElementById('importBtn').onclick = function(){
+      document.getElementById('importInput').click();
+    };
+    document.getElementById('importInput').addEventListener('change', function(e){
+      var file = e.target.files && e.target.files[0];
+      if (file) importBackupFile(file);
+      e.target.value = '';
+    });
+
+    renderSongRail();
+    renderMain();
+    renderTransport();
+  }
+
+  function renderSongRail(){
+    var html = '';
+    state.songs.forEach(function(s){
+      var active = s.id===state.selectedId;
+      html += '<div class="chip'+(active?' active':'')+'" data-id="'+s.id+'" title="'+(s.analyzed?'動画解析ずみ（要確認）':'テンプレート（未確認）')+'">'+
+        '<span class="num">'+String(s.order).padStart(2,'0')+'</span><span>'+escapeHtml(s.title)+'</span>'+
+        '<span class="status-dot" style="width:6px;height:6px;border-radius:50%;flex:none;background:'+(s.analyzed?'var(--ok)':'var(--text-faint)')+';opacity:'+(s.analyzed?'1':'.5')+';"></span>'+
+        (state.editMode ? '<span class="chip-x" data-del="'+s.id+'">×</span>' : '')+
+      '</div>';
+    });
+    if (state.editMode){
+      html += '<div class="chip add" id="addSongChip">+ 曲を追加</div>';
+    }
+    els.songrail.innerHTML = html;
+    els.songrail.querySelectorAll('.chip[data-id]').forEach(function(chip){
+      chip.addEventListener('click', function(e){
+        if (e.target.dataset.del) return;
+        state.selectedId = chip.dataset.id;
+        state.editingCueId = null;
+        state.editingSongTitle = false;
+        state.editingDuration = false;
+        state.addingCue = false;
+        state.lastCurrentCueId = undefined;
+        renderMain();
+        renderNowNext();
+      });
+    });
+    els.songrail.querySelectorAll('[data-del]').forEach(function(x){
+      x.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (confirm('この曲を削除しますか？')) deleteSong(x.dataset.del);
+      });
+    });
+    var addChip = document.getElementById('addSongChip');
+    if (addChip) addChip.addEventListener('click', addSong);
+  }
+
+  function renderMain(){
+    var song = currentSong();
+    if (!song){
+      els.main.innerHTML = '<div class="empty-state">曲がありません。編集モードで曲を追加してください。</div>';
+      return;
+    }
+    var cues = sortedCues(song);
+
+    var titleHtml = state.editingSongTitle
+      ? '<input class="song-title-input" id="songTitleInput" value="'+escapeHtml(song.title)+'">'
+      : '<div class="song-title'+(state.editMode?' editable':'')+'" id="songTitleLabel">'+escapeHtml(song.title)+'</div>';
+
+    var metaHtml = state.editingDuration
+      ? '<input class="song-meta-input" id="songDurInput" value="'+fmtTime(song.durationSec)+'">'
+      : '<div class="song-meta'+(state.editMode?' editable':'')+'" id="songDurLabel">全長 '+fmtTime(song.durationSec)+'</div>';
+
+    els.main.innerHTML =
+      '<div class="main-grid">'+
+        '<div class="hero-col">'+
+          '<div class="song-title-row">'+
+            titleHtml+
+            metaHtml+
+          '</div>'+
+          '<div class="caveat"><b>注記：</b>'+(song.analysisNote ? escapeHtml(song.analysisNote) : '秒数はリハ動画をもとにした目安（未解析のテンプレート）です。')+' 本番のテンポで前後するので、再生中に該当キューをタップすると、その場で時刻を合わせ直せます。</div>'+
+          '<div class="timeline-wrap">'+
+            '<div class="timeline" id="timeline">'+
+              '<div class="timeline-fill" id="timelineFill"></div>'+
+              cues.map(function(c){ return '<div class="timeline-mark" style="left:'+(c.time/song.durationSec*100)+'%"></div>'; }).join('')+
+              '<div class="timeline-playhead" id="timelinePlayhead" style="left:0%"></div>'+
+            '</div>'+
+            '<div class="timeline-time"><span>0:00</span><span>'+fmtTime(song.durationSec)+'</span></div>'+
+          '</div>'+
+          '<div class="now-card" id="nowCard"></div>'+
+          '<div class="next-strip" id="nextStrip"></div>'+
+        '</div>'+
+        '<div class="cue-col">'+
+          '<div class="cue-list-head"><span>曲の展開</span><span>'+cues.length+' キュー</span></div>'+
+          '<div class="cue-list" id="cueList"></div>'+
+          (state.editMode ? '<button class="add-cue-btn" id="addCueBtn">＋ キューを追加</button>' : '')+
+        '</div>'+
+      '</div>';
+
+    if (state.editingSongTitle){
+      var input = document.getElementById('songTitleInput');
+      input.focus(); input.select();
+      var commit = function(){
+        var v = input.value.trim() || song.title;
+        state.editingSongTitle = false;
+        writeSongField(song.id,'title',v);
+      };
+      input.addEventListener('keydown', function(e){ if (e.key==='Enter') commit(); if (e.key==='Escape'){state.editingSongTitle=false; renderMain();} });
+      input.addEventListener('blur', commit);
+    } else if (state.editMode){
+      document.getElementById('songTitleLabel').addEventListener('click', function(){
+        state.editingSongTitle = true;
+        renderMain();
+      });
+    }
+
+    if (state.editingDuration){
+      var dinput = document.getElementById('songDurInput');
+      dinput.focus(); dinput.select();
+      var commitDur = function(){
+        var v = parseTime(dinput.value);
+        state.editingDuration = false;
+        if (v!=null && v>0) writeSongField(song.id,'durationSec', v);
+        else renderMain();
+      };
+      dinput.addEventListener('keydown', function(e){ if (e.key==='Enter') commitDur(); if (e.key==='Escape'){state.editingDuration=false; renderMain();} });
+      dinput.addEventListener('blur', commitDur);
+    } else if (state.editMode){
+      var dlabel = document.getElementById('songDurLabel');
+      if (dlabel) dlabel.addEventListener('click', function(){
+        state.editingDuration = true;
+        renderMain();
+      });
+    }
+
+    renderCueList(song, cues);
+
+    var addBtn = document.getElementById('addCueBtn');
+    if (addBtn) addBtn.addEventListener('click', function(){
+      var t = Math.round(elapsedSec());
+      var cue = {id:uid(), time:t, label:'新しいパート', performer:'', note:''};
+      var newCues = sortedCues(song).concat([cue]);
+      writeCues(song.id, newCues);
+      state.editingCueId = cue.id;
+      renderMain();
+    });
+
+    renderNowNext();
+  }
+
+  function renderCueList(song, cues){
+    var list = document.getElementById('cueList');
+    if (!list) return;
+    if (cues.length===0){
+      list.innerHTML = '<div class="empty-state">キューがありません。「＋ キューを追加」で追加してください。</div>';
+      return;
+    }
+    var t = elapsedSec();
+    var cn = findCurrentAndNext(cues, t);
+    list.innerHTML = cues.map(function(c){
+      var isCurrent = cn.current && cn.current.id===c.id;
+      var isPast = !isCurrent && c.time < t;
+      if (state.editingCueId===c.id){
+        return '<div class="cue-row" data-editrow="'+c.id+'">'+
+          '<div class="cue-edit-form">'+
+            '<div class="cue-edit-row">'+
+              '<input class="f-time" id="ef_time_'+c.id+'" value="'+fmtTime(c.time)+'" placeholder="0:00">'+
+              '<input class="f-label" id="ef_label_'+c.id+'" value="'+escapeHtml(c.label)+'" placeholder="パート名 (例: サビ)">'+
+            '</div>'+
+            '<div class="cue-edit-row">'+
+              '<input class="f-performer" id="ef_performer_'+c.id+'" value="'+escapeHtml(c.performer)+'" placeholder="担当 (例: Vo メイン)">'+
+            '</div>'+
+            '<div class="cue-edit-row">'+
+              '<input class="f-note" id="ef_note_'+c.id+'" value="'+escapeHtml(c.note||'')+'" placeholder="メモ（任意）">'+
+            '</div>'+
+            '<div class="cue-edit-actions">'+
+              '<button class="btn btn-cancel" id="ef_cancel_'+c.id+'">キャンセル</button>'+
+              '<button class="btn btn-save" id="ef_save_'+c.id+'">保存</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      }
+      return '<div class="cue-row'+(isCurrent?' current':'')+(isPast?' past':'')+'" data-cueid="'+c.id+'">'+
+        '<div class="cue-time">'+fmtTime(c.time)+'</div>'+
+        '<div class="cue-body">'+
+          '<div class="cue-label">'+escapeHtml(c.label)+'</div>'+
+          (c.performer
+            ? '<span class="cue-performer" style="'+performerStyle(c.performer)+'">'+escapeHtml(c.performer)+'</span>'
+            : (state.editMode ? '<span class="cue-performer empty">担当未設定</span>' : ''))+
+          (c.note ? '<div class="cue-note">'+escapeHtml(c.note)+'</div>' : '')+
+        '</div>'+
+        (state.editMode ? '<div class="cue-actions">'+
+          '<button class="icon-btn" data-edit="'+c.id+'">✎</button>'+
+          '<button class="icon-btn danger" data-del="'+c.id+'">×</button>'+
+        '</div>' : '')+
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('[data-cueid]').forEach(function(row){
+      row.addEventListener('click', function(e){
+        if (e.target.closest('[data-edit],[data-del]')) return;
+        if (state.editMode) return;
+        var target = cues.find(function(c){ return c.id===row.dataset.cueid; });
+        if (target) jumpTo(target.time);
+      });
+    });
+    list.querySelectorAll('[data-edit]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        state.editingCueId = btn.dataset.edit;
+        renderCueList(song, cues);
+      });
+    });
+    list.querySelectorAll('[data-del]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var newCues = cues.filter(function(c){return c.id!==btn.dataset.del;});
+        writeCues(song.id, newCues);
+      });
+    });
+    cues.forEach(function(c){
+      var saveBtn = document.getElementById('ef_save_'+c.id);
+      var cancelBtn = document.getElementById('ef_cancel_'+c.id);
+      if (saveBtn){
+        saveBtn.addEventListener('click', function(){
+          var timeVal = parseTime(document.getElementById('ef_time_'+c.id).value);
+          var newCue = {
+            id:c.id,
+            time: timeVal==null ? c.time : timeVal,
+            label: document.getElementById('ef_label_'+c.id).value.trim() || c.label,
+            performer: document.getElementById('ef_performer_'+c.id).value.trim(),
+            note: document.getElementById('ef_note_'+c.id).value.trim()
+          };
+          var newCues = sortedCues(song).map(function(x){ return x.id===c.id ? newCue : x; });
+          state.editingCueId = null;
+          writeCues(song.id, newCues);
+        });
+      }
+      if (cancelBtn){
+        cancelBtn.addEventListener('click', function(){
+          state.editingCueId = null;
+          renderCueList(song, cues);
+        });
+      }
+    });
+  }
+
+  function renderNowNext(){
+    var song = currentSong();
+    if (!song) return;
+    var cues = sortedCues(song);
+    var t = elapsedSec();
+    var cn = findCurrentAndNext(cues, t);
+
+    var nowCard = document.getElementById('nowCard');
+    if (nowCard){
+      if (cn.current){
+        nowCard.className = 'now-card'+(state.running?' live':'');
+        nowCard.innerHTML =
+          '<div class="now-eyebrow">NOW　'+fmtTime(t)+' / '+fmtTime(song.durationSec)+'</div>'+
+          '<div class="now-label">'+escapeHtml(cn.current.label)+'</div>'+
+          (cn.current.performer
+            ? '<span class="now-performer" style="'+performerStyle(cn.current.performer)+'">'+escapeHtml(cn.current.performer)+'</span>'
+            : '<span class="now-empty">担当未設定</span>')+
+          (cn.current.note ? '<div class="now-note">'+escapeHtml(cn.current.note)+'</div>' : '');
+      } else {
+        nowCard.className = 'now-card';
+        nowCard.innerHTML = '<div class="now-eyebrow">NOW　'+fmtTime(t)+' / '+fmtTime(song.durationSec)+'</div><div class="now-empty">再生するとここに現在のパートが表示されます</div>';
+      }
+    }
+
+    var nextStrip = document.getElementById('nextStrip');
+    if (nextStrip){
+      if (cn.next){
+        var eta = cn.next.time - t;
+        var soon = eta <= 6;
+        nextStrip.className = 'next-strip'+(soon?' soon':'');
+        nextStrip.innerHTML =
+          '<span class="tag">NEXT</span>'+
+          '<span class="body">'+escapeHtml(cn.next.label)+(cn.next.performer ? '　→ '+escapeHtml(cn.next.performer) : '')+'</span>'+
+          '<span class="eta">-'+fmtTime(eta)+'</span>';
+      } else {
+        nextStrip.className = 'next-strip';
+        nextStrip.innerHTML = '<span class="tag">NEXT</span><span class="body">この曲の最後のキューです</span>';
+      }
+    }
+
+    var fill = document.getElementById('timelineFill');
+    var playhead = document.getElementById('timelinePlayhead');
+    if (fill && playhead){
+      var pct = Math.min(100, Math.max(0, t/song.durationSec*100));
+      fill.style.width = pct+'%';
+      playhead.style.left = pct+'%';
+    }
+
+    if (cn.current && cn.current.id !== state.lastCurrentCueId){
+      state.lastCurrentCueId = cn.current ? cn.current.id : undefined;
+      renderCueList(song, cues);
+      scrollToCurrent();
+    } else if (!cn.current) {
+      renderCueList(song, cues);
+    }
+
+    var clock = document.getElementById('clockDisplay');
+    if (clock) clock.textContent = fmtTime(t);
+  }
+
+  function scrollToCurrent(){
+    var row = document.querySelector('.cue-row.current');
+    if (row) row.scrollIntoView({block:'center', behavior:'smooth'});
+  }
+
+  function renderTransport(){
+    els.transport.innerHTML =
+      '<div class="clock" id="clockDisplay">0:00</div>'+
+      '<button class="t-btn" id="nudgeBackBtn">−5s</button>'+
+      '<button class="t-btn" id="resetBtn">戻す</button>'+
+      '<button class="t-play'+(state.running?' playing':'')+'" id="playBtn">'+(state.running?'❚❚':'▶')+'</button>'+
+      '<button class="t-btn" id="nudgeFwdBtn">+5s</button>';
+    document.getElementById('playBtn').addEventListener('click', function(){
+      if (state.running) pause(); else play();
+    });
+    document.getElementById('resetBtn').addEventListener('click', reset);
+    document.getElementById('nudgeBackBtn').addEventListener('click', function(){ nudge(-5); });
+    document.getElementById('nudgeFwdBtn').addEventListener('click', function(){ nudge(5); });
+  }
+
+  initDb();
+  renderAll();
+})();
+</script>
